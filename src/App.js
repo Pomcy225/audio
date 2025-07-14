@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as Tone from "tone";
 // Note: Assurez-vous que le fichier demo.mp3 existe dans le dossier assets
-import demoAudio from "./assets/demo.mp3";
+//import demoAudio from "/demo.mp3";
 
 export default function App() {
   const playerRef = useRef(null);
@@ -25,7 +25,8 @@ export default function App() {
         await Tone.start();
         
         const player = new Tone.Player({
-          url: demoAudio,
+         // url: demoAudio,
+          url: "/demo.mp3",
           onload: () => isMounted && setIsReady(true),
           onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
         }).toDestination();

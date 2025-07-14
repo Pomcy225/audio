@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as Tone from "tone";
 
 export default function App() {
@@ -15,46 +15,45 @@ export default function App() {
   const [eq, setEq] = useState({ low: 0, mid: 0, high: 0 });
   const [error, setError] = useState(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Initialisation des effets audio
   useEffect(() => {
-    let isMounted = true;
+    const player = new Tone.Player({
+      url: "/demo.mp3",
+      onload: () => setIsReady(true),
+      onerror: (err) => setError(`Erreur de chargement audio: ${err}`)
+    }).toDestination();
 
-    async function setup() {
-      try {
-        const player = new Tone.Player({
-          url: "/demo.mp3",
-          onload: () => isMounted && setIsReady(true),
-          onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
-        });
+    const pitchShift = new Tone.PitchShift().toDestination();
+    const reverb = new Tone.Reverb().toDestination();
+    const eq3 = new Tone.EQ3().toDestination();
 
-        const pitchShift = new Tone.PitchShift(pitch);
-        const reverb = new Tone.Reverb(reverbDecay);
-        await reverb.generate();
+    // Chaînage des effets
+    player.chain(pitchShift, reverb, eq3, Tone.Destination);
 
-        const eq3 = new Tone.EQ3(eq.low, eq.mid, eq.high);
+    playerRef.current = player;
+    pitchShiftRef.current = pitchShift;
+    reverbRef.current = reverb;
+    eq3Ref.current = eq3;
 
-        player.chain(pitchShift, reverb, eq3, Tone.Destination);
-
-        playerRef.current = player;
-        pitchShiftRef.current = pitchShift;
-        reverbRef.current = reverb;
-        eq3Ref.current = eq3;
-      } catch (err) {
-        isMounted && setError(`Erreur d'initialisation: ${err.message}`);
-      }
-    }
-
-    setup();
+    // Génération initiale de la réverbération
+    reverb.generate().catch(err => {
+      setError(`Erreur d'initialisation de la réverbération: ${err}`);
+    });
 
     return () => {
-      isMounted = false;
-      playerRef.current?.stop();
-      playerRef.current?.dispose();
-      pitchShiftRef.current?.dispose();
-      reverbRef.current?.dispose();
-      eq3Ref.current?.dispose();
+      player.dispose();
+      pitchShift.dispose();
+      reverb.dispose();
+      eq3.dispose();
     };
-  }, [eq.high,eq.low,eq.mid,pitch,reverbDecay]);
+  }, []);
+
+  // Mise à jour des paramètres des effets
+  useEffect(() => {
+    if (playerRef.current) {
+      playerRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
 
   useEffect(() => {
     if (pitchShiftRef.current) {
@@ -65,9 +64,6 @@ export default function App() {
   useEffect(() => {
     if (reverbRef.current) {
       reverbRef.current.decay = reverbDecay;
-      reverbRef.current.generate().catch(err => {
-        setError(`Erreur de mise à jour de la réverbération: ${err}`);
-      });
     }
   }, [reverbDecay]);
 
@@ -77,48 +73,44 @@ export default function App() {
       eq3Ref.current.mid.value = eq.mid;
       eq3Ref.current.high.value = eq.high;
     }
-  }, [eq.high,eq.low,eq.mid,pitch,reverbDecay]);
+  }, [eq]);
 
-  const togglePlay = async () => {
+  const togglePlay = useCallback(async () => {
     try {
-      await Tone.start(); // Doit être appelé suite à une interaction utilisateur
-      if (!playerRef.current || !isReady) return;
-
-      if (!isPlaying) {
-        playerRef.current.playbackRate = playbackRate;
-        playerRef.current.start();
+      if (!isReady) return;
+      
+      await Tone.start();
+      
+      if (isPlaying) {
+        playerRef.current?.stop();
       } else {
-        playerRef.current.stop();
+        playerRef.current?.start();
       }
-
-      setIsPlaying(prev => !prev);
+      
+      setIsPlaying(!isPlaying);
     } catch (err) {
-      setError("Erreur de lecture audio : " + err.message);
+      setError(`Erreur de lecture: ${err.message}`);
     }
-  };
+  }, [isPlaying, isReady]);
 
   const handlePlaybackRateChange = (e) => {
     const value = parseFloat(e.target.value);
     setPlaybackRate(value);
-    if (playerRef.current) {
-      playerRef.current.playbackRate = value;
-    }
   };
 
   const handlePitchChange = (e) => setPitch(parseFloat(e.target.value));
   const handleReverbChange = (e) => setReverbDecay(parseFloat(e.target.value));
-  const handleEqChange = (band, val) => {
-    setEq(prev => ({ ...prev, [band]: parseInt(val) }));
-  };
+  
+  const handleEqChange = useCallback((band, val) => {
+    setEq(prev => ({ ...prev, [band]: parseInt(val, 10) }));
+  }, []);
 
-
-  // Réinitialiser tous les paramètres
-  const resetSettings = () => {
+  const resetSettings = useCallback(() => {
     setPlaybackRate(1);
     setPitch(0);
     setReverbDecay(1.5);
     setEq({ low: 0, mid: 0, high: 0 });
-  };
+  }, []);
 
   return (
     <div className="app-container">

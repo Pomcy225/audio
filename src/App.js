@@ -62,7 +62,7 @@ export default function App() {
       reverbRef.current?.dispose();
       eq3Ref.current?.dispose();
     };
-  }, [  eq.high,eq.low,eq.mid, pitch, reverbDecay]);
+  }, []);
 
   useEffect(() => {
     if (pitchShiftRef.current) pitchShiftRef.current.pitch = pitch;

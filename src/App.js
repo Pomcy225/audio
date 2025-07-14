@@ -54,7 +54,7 @@ export default function App() {
       reverbRef.current?.dispose();
       eq3Ref.current?.dispose();
     };
-  }, []);
+  }, [eq.high,eq.low,eq.mid,pitch,reverbDecay]);
 
   useEffect(() => {
     if (pitchShiftRef.current) {
@@ -77,7 +77,7 @@ export default function App() {
       eq3Ref.current.mid.value = eq.mid;
       eq3Ref.current.high.value = eq.high;
     }
-  }, [eq,eq.high,eq.low,eq.mid,pitch,reverbDecay]);
+  }, [eq.high,eq.low,eq.mid,pitch,reverbDecay]);
 
   const togglePlay = async () => {
     try {

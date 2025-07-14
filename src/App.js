@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as Tone from "tone";
 // Note: Assurez-vous que le fichier demo.mp3 existe dans le dossier assets
-//import demoAudio from "/demo.mp3";
+// import demoAudio from "./assets/demo.mp3";
 
 export default function App() {
   const playerRef = useRef(null);
@@ -23,13 +23,12 @@ export default function App() {
     async function setup() {
       try {
         await Tone.start();
-        
+   
         const player = new Tone.Player({
-         // url: demoAudio,
-          url: "/demo.mp3",
-          onload: () => isMounted && setIsReady(true),
-          onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
-        }).toDestination();
+  url: "/demo.mp3", // Fichier dans le dossier public (accessible à la racine du site)
+  onload: () => isMounted && setIsReady(true), // ✅ Marque le player comme prêt une fois le chargement terminé
+  onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`) // ✅ Capture les erreurs de chargement
+}).toDestination(); // Connecte directement à la sortie audio finale
 
         const pitchShift = new Tone.PitchShift(pitch);
         const reverb = new Tone.Reverb(reverbDecay);
@@ -63,7 +62,7 @@ export default function App() {
       reverbRef.current?.dispose();
       eq3Ref.current?.dispose();
     };
-  }, []);
+  }, [  eq.high,eq.low,eq.mid, pitch, reverbDecay]);
 
   useEffect(() => {
     if (pitchShiftRef.current) pitchShiftRef.current.pitch = pitch;
@@ -84,7 +83,7 @@ export default function App() {
       eq3Ref.current.mid.value = eq.mid;
       eq3Ref.current.high.value = eq.high;
     }
-  }, [eeq.high, eq.low, eq.mid, pitch,reverbDecay]);
+  }, [eq]);
 
   const togglePlay = () => {
     if (!playerRef.current || !isReady) return;

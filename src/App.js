@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as Tone from "tone";
-// Note: Assurez-vous que le fichier demo.mp3 existe dans le dossier assets
-// import demoAudio from "./assets/demo.mp3";
 
 export default function App() {
   const playerRef = useRef(null);
@@ -17,49 +15,51 @@ export default function App() {
   const [eq, setEq] = useState({ low: 0, mid: 0, high: 0 });
   const [error, setError] = useState(null);
 
-useEffect(() => {
-  let isMounted = true;
-  async function setup() {
-    try {
-      const player = new Tone.Player({
-        url: "/demo.mp3",
-        onload: () => isMounted && setIsReady(true),
-        onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
-      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let isMounted = true;
 
-      const pitchShift = new Tone.PitchShift(pitch);
-      const reverb = new Tone.Reverb(reverbDecay);
-      await reverb.generate();
-      const eq3 = new Tone.EQ3(eq.low, eq.mid, eq.high);
+    async function setup() {
+      try {
+        const player = new Tone.Player({
+          url: "/demo.mp3",
+          onload: () => isMounted && setIsReady(true),
+          onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
+        });
 
-      player.chain(pitchShift, reverb, eq3, Tone.Destination);
+        const pitchShift = new Tone.PitchShift(pitch);
+        const reverb = new Tone.Reverb(reverbDecay);
+        await reverb.generate();
 
-      playerRef.current = player;
-      pitchShiftRef.current = pitchShift;
-      reverbRef.current = reverb;
-      eq3Ref.current = eq3;
-    } catch (err) {
-      setError(`Erreur d'initialisation: ${err.message}`);
+        const eq3 = new Tone.EQ3(eq.low, eq.mid, eq.high);
+
+        player.chain(pitchShift, reverb, eq3, Tone.Destination);
+
+        playerRef.current = player;
+        pitchShiftRef.current = pitchShift;
+        reverbRef.current = reverb;
+        eq3Ref.current = eq3;
+      } catch (err) {
+        isMounted && setError(`Erreur d'initialisation: ${err.message}`);
+      }
     }
-  }
 
-  setup();
+    setup();
 
-  return () => {
-    isMounted = false;
-    playerRef.current?.dispose();
-    pitchShiftRef.current?.dispose();
-    reverbRef.current?.dispose();
-    eq3Ref.current?.dispose();
-  };
-}, []); // ✅ Exécution une seule fois au chargement
-
-
-
-
+    return () => {
+      isMounted = false;
+      playerRef.current?.stop();
+      playerRef.current?.dispose();
+      pitchShiftRef.current?.dispose();
+      reverbRef.current?.dispose();
+      eq3Ref.current?.dispose();
+    };
+  }, []);
 
   useEffect(() => {
-    if (pitchShiftRef.current) pitchShiftRef.current.pitch = pitch;
+    if (pitchShiftRef.current) {
+      pitchShiftRef.current.pitch = pitch;
+    }
   }, [pitch]);
 
   useEffect(() => {
@@ -77,24 +77,32 @@ useEffect(() => {
       eq3Ref.current.mid.value = eq.mid;
       eq3Ref.current.high.value = eq.high;
     }
-  }, [eq]);
+  }, [eq,eq.high,eq.low,eq.mid,pitch,reverbDecay]);
 
-  const togglePlay = () => {
-    if (!playerRef.current || !isReady) return;
+  const togglePlay = async () => {
+    try {
+      await Tone.start(); // Doit être appelé suite à une interaction utilisateur
+      if (!playerRef.current || !isReady) return;
 
-    if (!isPlaying) {
-      playerRef.current.playbackRate = playbackRate;
-      playerRef.current.start();
-    } else {
-      playerRef.current.stop();
+      if (!isPlaying) {
+        playerRef.current.playbackRate = playbackRate;
+        playerRef.current.start();
+      } else {
+        playerRef.current.stop();
+      }
+
+      setIsPlaying(prev => !prev);
+    } catch (err) {
+      setError("Erreur de lecture audio : " + err.message);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handlePlaybackRateChange = (e) => {
     const value = parseFloat(e.target.value);
     setPlaybackRate(value);
-    if (playerRef.current) playerRef.current.playbackRate = value;
+    if (playerRef.current) {
+      playerRef.current.playbackRate = value;
+    }
   };
 
   const handlePitchChange = (e) => setPitch(parseFloat(e.target.value));
@@ -102,6 +110,7 @@ useEffect(() => {
   const handleEqChange = (band, val) => {
     setEq(prev => ({ ...prev, [band]: parseInt(val) }));
   };
+
 
   // Réinitialiser tous les paramètres
   const resetSettings = () => {

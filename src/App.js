@@ -17,52 +17,46 @@ export default function App() {
   const [eq, setEq] = useState({ low: 0, mid: 0, high: 0 });
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    async function setup() {
-      try {
-        await Tone.start();
-   
-        const player = new Tone.Player({
-  url: "/demo.mp3", // Fichier dans le dossier public (accessible à la racine du site)
-  onload: () => isMounted && setIsReady(true), // ✅ Marque le player comme prêt une fois le chargement terminé
-  onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`) // ✅ Capture les erreurs de chargement
-}).toDestination(); // Connecte directement à la sortie audio finale
+useEffect(() => {
+  let isMounted = true;
+  async function setup() {
+    try {
+      const player = new Tone.Player({
+        url: "/demo.mp3",
+        onload: () => isMounted && setIsReady(true),
+        onerror: (err) => isMounted && setError(`Erreur de chargement audio: ${err}`)
+      });
 
-        const pitchShift = new Tone.PitchShift(pitch);
-        const reverb = new Tone.Reverb(reverbDecay);
-        
-        try {
-          await reverb.generate();
-        } catch (err) {
-          isMounted && setError(`Erreur de génération de réverbération: ${err}`);
-        }
+      const pitchShift = new Tone.PitchShift(pitch);
+      const reverb = new Tone.Reverb(reverbDecay);
+      await reverb.generate();
+      const eq3 = new Tone.EQ3(eq.low, eq.mid, eq.high);
 
-        const eq3 = new Tone.EQ3(eq.low, eq.mid, eq.high);
+      player.chain(pitchShift, reverb, eq3, Tone.Destination);
 
-        player.chain(pitchShift, reverb, eq3, Tone.Destination);
-
-        playerRef.current = player;
-        pitchShiftRef.current = pitchShift;
-        reverbRef.current = reverb;
-        eq3Ref.current = eq3;
-      } catch (err) {
-        isMounted && setError(`Erreur d'initialisation: ${err.message}`);
-      }
+      playerRef.current = player;
+      pitchShiftRef.current = pitchShift;
+      reverbRef.current = reverb;
+      eq3Ref.current = eq3;
+    } catch (err) {
+      setError(`Erreur d'initialisation: ${err.message}`);
     }
-    
-    setup();
+  }
 
-    return () => {
-      isMounted = false;
-      playerRef.current?.stop();
-      playerRef.current?.dispose();
-      pitchShiftRef.current?.dispose();
-      reverbRef.current?.dispose();
-      eq3Ref.current?.dispose();
-    };
-  }, []);
+  setup();
+
+  return () => {
+    isMounted = false;
+    playerRef.current?.dispose();
+    pitchShiftRef.current?.dispose();
+    reverbRef.current?.dispose();
+    eq3Ref.current?.dispose();
+  };
+}, []); // ✅ Exécution une seule fois au chargement
+
+
+
+
 
   useEffect(() => {
     if (pitchShiftRef.current) pitchShiftRef.current.pitch = pitch;

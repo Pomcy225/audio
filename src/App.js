@@ -84,7 +84,7 @@ export default function App() {
       eq3Ref.current.mid.value = eq.mid;
       eq3Ref.current.high.value = eq.high;
     }
-  }, [eq]);
+  }, [eeq.high, eq.low, eq.mid, pitch,reverbDecay]);
 
   const togglePlay = () => {
     if (!playerRef.current || !isReady) return;
